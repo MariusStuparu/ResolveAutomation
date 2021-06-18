@@ -17,6 +17,7 @@ class ResolveAutomation:
         # Resolve specific
         self.resolve = None
         self.pm = None
+        self.mediaStorage = None
         self.selectedProject = None
         self.mediaPool = None
         self.rootFolder = None
@@ -54,6 +55,7 @@ class ResolveAutomation:
             elif self.dvr:
                 self.resolve = self.dvr.scriptapp('Resolve')
             self.pm = self.resolve.GetProjectManager()
+            self.mediaStorage = self.resolve.GetMediaStorage()
             self.__startGUI()
 
     def __startGUI(self) -> None:
@@ -72,9 +74,11 @@ class ResolveAutomation:
         self.window.title('DaVinci Resolve Automated Render')
         self.window.geometry('800x500')
         self.framePrjSelect = Frame(self.window, height=150, width=800)
-        self.framePrjSelect.pack(fill=X, pady=15)
-        self.frameFolderSelect = Frame(self.window, height=150, width=750, relief=SUNKEN)
-        self.frameFolderSelect.pack(fill=X, pady=15)
+        self.framePrjSelect.pack(pady=15)
+        self.frameFolderSelect = Frame(self.window, height=150, width=750)
+        self.frameFolderSelect.pack(pady=15)
+        self.frameClipsInfo = Frame(self.window, height=50, width=750)
+        self.frameClipsInfo.pack(pady=10)
 
     def __generateProjectSelectionButtons(self) -> None:
         """
@@ -136,7 +140,29 @@ class ResolveAutomation:
         for btn in self.btnsFolders:
             btn['state'] = 'normal'
         self.btnsFolders[index]['state'] = 'disabled'
-        self.selectedFolder = self.mediaPool.SetCurrentFolder(folder)
+        self.mediaPool.SetCurrentFolder(folder)
+        self.selectedFolder = self.mediaPool.GetCurrentFolder()
+        self.__getFolderContents()
+
+    def __getFolderContents(self):
+        self.clipsInFolder = self.selectedFolder.GetClips()
+        self.audioFilesInFolder = []
+        self.videoFilesInFolder = []
+
+        for index in self.clipsInFolder:
+            clip = self.clipsInFolder[index]
+            if clip.GetClipProperty('Type') == 'Audio':
+                self.audioFilesInFolder.append(clip)
+            if clip.GetClipProperty('Type') == 'Video':
+                self.videoFilesInFolder.append(clip)
+
+        if self.frameClipsInfo.winfo_children():
+            for w in self.frameClipsInfo.winfo_children():
+                w.destroy()
+
+        stats = Label(self.frameClipsInfo,
+                      text=f'Folder contains: {len(self.audioFilesInFolder)} audio file(s) and {len(self.videoFilesInFolder)} video file(s)')
+        stats.pack(side=TOP, anchor=N)
 
 
 if __name__ == '__main__':
