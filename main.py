@@ -18,6 +18,11 @@ class ResolveAutomation:
         self.resolve = None
         self.pm = None
         self.selectedProject = None
+        self.mediaPool = None
+        self.rootFolder = None
+        self.firstLevelFolders = None
+        self.selectedFolder = None
+        self.clipsInFolder = None
 
         try:
             import DaVinciResolveScript as dvr
@@ -110,8 +115,8 @@ class ResolveAutomation:
         if self.selectedProject:
             self.btnsFolders = []
             self.mediaPool = self.selectedProject.GetMediaPool()
-            rootFolder = self.mediaPool.GetRootFolder()
-            subfolders = rootFolder.GetSubFolderList()
+            self.rootFolder = self.mediaPool.GetRootFolder()
+            self.firstLevelFolders = self.rootFolder.GetSubFolderList()
 
             if self.frameFolderSelect.winfo_children():
                 for w in self.frameFolderSelect.winfo_children():
@@ -120,12 +125,18 @@ class ResolveAutomation:
             selectFolderLabel = Label(self.frameFolderSelect, text='Select the folder to be processed:')
             selectFolderLabel.pack(side=TOP, anchor=N)
 
-            for index, folder in enumerate(subfolders):
+            for index, folder in enumerate(self.firstLevelFolders):
                 folderName = folder.GetName()
                 button = Button(self.frameFolderSelect, text=folderName,
-                                command=partial(lambda i=index, prj=folderName: self.__onProjectSelect(i, prj)))
+                                command=partial(lambda i=index, prj=folder: self.__onFolderSelect(i, prj)))
                 button.pack(side=LEFT, padx=10)
                 self.btnsFolders.append(button)
+
+    def __onFolderSelect(self, index: int, folder) -> None:
+        for btn in self.btnsFolders:
+            btn['state'] = 'normal'
+        self.btnsFolders[index]['state'] = 'disabled'
+        self.selectedFolder = self.mediaPool.SetCurrentFolder(folder)
 
 
 if __name__ == '__main__':
