@@ -4,6 +4,7 @@ from sys import platform
 import importlib
 from tkinter import *
 from functools import partial
+import time
 
 
 class ResolveAutomation:
@@ -64,7 +65,6 @@ class ResolveAutomation:
         """
         self.__basigGUIsetup()
         self.__generateProjectSelectionButtons()
-
         self.window.mainloop()
 
     def __basigGUIsetup(self) -> None:
@@ -79,6 +79,8 @@ class ResolveAutomation:
         self.frameFolderSelect.pack(pady=15)
         self.frameClipsInfo = Frame(self.window, height=50, width=750)
         self.frameClipsInfo.pack(pady=10)
+        self.frameProcessFolder = Frame(self.window, height=200, width=750)
+        self.frameProcessFolder.pack(pady=10)
 
     def __generateProjectSelectionButtons(self) -> None:
         """
@@ -113,41 +115,52 @@ class ResolveAutomation:
             btn['state'] = 'normal'
         self.btnsProjects[index]['state'] = 'disabled'
         self.selectedProject = self.pm.LoadProject(prjName)
+        self.__cleanupWindowOnProjectChange()
         self.__generateBinSelectionButtons()
 
     def __generateBinSelectionButtons(self) -> None:
+        """
+        Read folders from project root and generate selection buttons
+        """
         if self.selectedProject:
             self.btnsFolders = []
             self.mediaPool = self.selectedProject.GetMediaPool()
             self.rootFolder = self.mediaPool.GetRootFolder()
             self.firstLevelFolders = self.rootFolder.GetSubFolderList()
 
-            if self.frameFolderSelect.winfo_children():
-                for w in self.frameFolderSelect.winfo_children():
-                    w.destroy()
+            if len(self.firstLevelFolders):
+                selectFolderLabel = Label(self.frameFolderSelect, text='Select the folder to be processed:')
+                selectFolderLabel.pack(side=TOP, anchor=N)
 
-            selectFolderLabel = Label(self.frameFolderSelect, text='Select the folder to be processed:')
-            selectFolderLabel.pack(side=TOP, anchor=N)
-
-            for index, folder in enumerate(self.firstLevelFolders):
-                folderName = folder.GetName()
-                button = Button(self.frameFolderSelect, text=folderName,
-                                command=partial(lambda i=index, prj=folder: self.__onFolderSelect(i, prj)))
-                button.pack(side=LEFT, padx=10)
-                self.btnsFolders.append(button)
+                for index, folder in enumerate(self.firstLevelFolders):
+                    folderName = folder.GetName()
+                    button = Button(self.frameFolderSelect, text=folderName,
+                                    command=partial(lambda i=index, prj=folder: self.__onFolderSelect(i, prj)))
+                    button.pack(side=LEFT, padx=10)
+                    self.btnsFolders.append(button)
 
     def __onFolderSelect(self, index: int, folder) -> None:
+        """
+        Action handler for folder selection buttons
+        :param index: position of the button inside the btnsFolders list
+        :param folder: string name of the folder, as received from Resolve
+        """
         for btn in self.btnsFolders:
             btn['state'] = 'normal'
         self.btnsFolders[index]['state'] = 'disabled'
         self.mediaPool.SetCurrentFolder(folder)
         self.selectedFolder = self.mediaPool.GetCurrentFolder()
+        self.__cleanupWindowOnFolderChange()
         self.__getFolderContents()
 
-    def __getFolderContents(self):
+    def __getFolderContents(self) -> None:
+        """
+        Read folder contents and separate media into audio, video and timelines
+        """
         self.clipsInFolder = self.selectedFolder.GetClips()
         self.audioFilesInFolder = []
         self.videoFilesInFolder = []
+        self.timelinesInFolder = []
 
         for index in self.clipsInFolder:
             clip = self.clipsInFolder[index]
@@ -155,14 +168,63 @@ class ResolveAutomation:
                 self.audioFilesInFolder.append(clip)
             if clip.GetClipProperty('Type') == 'Video':
                 self.videoFilesInFolder.append(clip)
+            if clip.GetClipProperty('Type') == 'Timeline':
+                self.timelinesInFolder.append(clip)
+
+        stats = Label(self.frameClipsInfo,
+                      text=f'Folder contains: '
+                           f'{len(self.audioFilesInFolder)} audio file(s), '
+                           f'{len(self.videoFilesInFolder)} video file(s) and '
+                           f'{len(self.timelinesInFolder)} timeline(s)')
+        stats.pack(side=TOP, anchor=N)
+        if len(self.videoFilesInFolder) == 1 and len(self.audioFilesInFolder) >= 1:
+            self.__showProcessButton()
+
+    def __showProcessButton(self) -> None:
+        self.processingEnabled = True
+        self.buttonProcess = Button(self.frameProcessFolder, text='START', command=self.__processFolder)
+        self.buttonProcess.pack(padx=5, pady=15, side=RIGHT)
+        self.buttonStop = Button(self.frameProcessFolder, text='Cancel', command=self.__cancelProcessing)
+        self.buttonStop.pack(padx=5, pady=15, side=RIGHT)
+        self.buttonStop['state'] = 'disabled'
+        pass
+
+    def __processFolder(self):
+        self.buttonProcess['state'] = 'disabled'
+        self.buttonStop['state'] = 'normal'
+        # for track in self.audioFilesInFolder:
+        #     self.buttonProcess['state'] = 'disabled'
+        #     self.buttonStop['state'] = 'normal'
+        #     print(f'processing... {track}')
+        #     time.sleep(5)
+        # else:
+        #     self.buttonProcess['state'] = 'normal'
+        #     self.buttonStop['state'] = 'disabled'
+
+    def __cancelProcessing(self):
+        self.processingEnabled = False
+
+    def __cleanupWindowOnProjectChange(self):
+        if self.frameFolderSelect.winfo_children():
+            for w in self.frameFolderSelect.winfo_children():
+                w.destroy()
 
         if self.frameClipsInfo.winfo_children():
             for w in self.frameClipsInfo.winfo_children():
                 w.destroy()
 
-        stats = Label(self.frameClipsInfo,
-                      text=f'Folder contains: {len(self.audioFilesInFolder)} audio file(s) and {len(self.videoFilesInFolder)} video file(s)')
-        stats.pack(side=TOP, anchor=N)
+        if self.frameProcessFolder.winfo_children():
+            for w in self.frameProcessFolder.winfo_children():
+                w.destroy()
+
+    def __cleanupWindowOnFolderChange(self):
+        if self.frameClipsInfo.winfo_children():
+            for w in self.frameClipsInfo.winfo_children():
+                w.destroy()
+
+        if self.frameProcessFolder.winfo_children():
+            for w in self.frameProcessFolder.winfo_children():
+                w.destroy()
 
 
 if __name__ == '__main__':
