@@ -1,6 +1,8 @@
 #!/usr/bin/python
 from os import environ as env
 from tkinter import *
+from tkinter import ttk
+from tkinter import filedialog
 from functools import partial
 
 from davinci import DaVinciResolve
@@ -13,6 +15,7 @@ class ResolveAutomation:
         """
         self.window = Tk()
         self.resolve = DaVinciResolve()
+        self.outputPath = None
 
         self.__startGUI()
 
@@ -35,7 +38,7 @@ class ResolveAutomation:
         self.frameFolderSelect = Frame(self.window, height=150, width=750)
         self.frameFolderSelect.pack(pady=15)
         self.frameClipsInfo = Frame(self.window, height=50, width=750)
-        self.frameClipsInfo.pack(pady=10)
+        self.frameClipsInfo.pack(padx=5, pady=10)
         self.frameProcessFolder = Frame(self.window, height=200, width=750)
         self.frameProcessFolder.pack(pady=10)
 
@@ -120,6 +123,20 @@ class ResolveAutomation:
                            f'{len(self.clipsInFolder["videoClips"])} video file(s) and '
                            f'{len(self.clipsInFolder["timelines"])} timeline(s)')
         stats.pack(side=TOP, anchor=N)
+
+        ouputFolderLabel = Label(self.frameClipsInfo, text='Select output folder:')
+        ouputFolderLabel.pack(side=LEFT)
+        outputFolderPath = Entry(self.frameClipsInfo, textvariable=self.outputPath)
+        outputFolderPath.pack(side=LEFT)
+
+        def __browseOutputFolder():
+            self.outputPath = filedialog.askdirectory()
+            outputFolderPath.delete(0, END)
+            outputFolderPath.insert(0, self.outputPath)
+
+        outputFolderBrowse = Button(self.frameClipsInfo, text='Browse', command=__browseOutputFolder)
+        outputFolderBrowse.pack(side=LEFT)
+
         if len(self.clipsInFolder["videoClips"]) == 1 and len(self.clipsInFolder["audioClips"]) >= 1:
             self.__showProcessButton()
 

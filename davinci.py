@@ -71,6 +71,7 @@ class DaVinciResolve:
     def setCurrentFolder(self, folder):
         if self.mediaPool:
             self.mediaPool.SetCurrentFolder(folder)
+            self.selectedFolder = folder
             return folder
         else:
             return None
