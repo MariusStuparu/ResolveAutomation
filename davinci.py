@@ -6,7 +6,8 @@ import importlib
 class DaVinciResolve:
     def __init__(self, ):
         self.errorMessages = []
-        self.RENDER_PRESET = 'YouTube - 1080p'
+        self.RENDER_VIDEO_PRESET = 'H.265 Master'
+        self.RENDER_AUDIO_PRESET = 'Audio Only'
 
         self.resolve = None
         self.pm = None
@@ -115,10 +116,10 @@ class DaVinciResolve:
         return self.clipsInFolder
 
     def createTimelineFromAudio(self, audioClip):
-        self.__removeExistingAutomations()
+        # self.__removeExistingAutomations()
 
         self.workingAudioFile = audioClip
-        self.workingTimeline = self.mediaPool.CreateTimelineFromClips('Automated Timeline', self.workingAudioFile)
+        self.workingTimeline = self.mediaPool.CreateTimelineFromClips(f'Automated Timeline | {self.workingAudioFile.GetName()}', self.workingAudioFile)
         self.clipsInFolder['timelines'].append(self.workingTimeline)
         frameRate = self.selectedProject.GetSetting('timelineFrameRate')
 
@@ -141,29 +142,53 @@ class DaVinciResolve:
     def createCompoundVideo(self):
         videoFiles = self.workingTimeline.GetItemListInTrack('video', 1)
         compound = self.workingTimeline.CreateCompoundClip(videoFiles, {
-            'name': 'Compound Video',
-            'startTimecode': '01:00:00:00'
+            'name': f'Compound Video | {self.workingAudioFile.GetName()}',
+            'startTimecode': '00:00:00:00'
         })
         self.workingCompoundVideo = compound.GetMediaPoolItem()
 
-        finalTimeline = self.mediaPool.CreateTimelineFromClips('Automated Timeline Video', self.workingCompoundVideo)
-        self.selectedProject.SetCurrentTimeline(finalTimeline)
+    def createRenderJob(self, targetDir, renderVideoFileName, renderAudioFileName):
+        """Render video and audio parts"""
 
-    def createRenderJob(self, targetDir, renderFileName):
-        self.selectedProject.SetRenderSettings({
-            'SelectAllFrames': True,
-            'TargetDir': targetDir,
-            'CustomName': renderFileName,
-            'ExportAudio': False
-        })
-        self.selectedProject.AddRenderJob()
-        self.openPage('deliver')
-        self.selectedProject.StartRendering()
+        if self.selectedProject.DeleteAllRenderJobs():
+            """Create render job for video part"""
+            finalVideoTimeline = self.mediaPool.CreateTimelineFromClips(f'Automated Video | {renderVideoFileName}', self.workingCompoundVideo)
+            self.selectedProject.SetCurrentTimeline(finalVideoTimeline)
+
+            self.selectedProject.LoadRenderPreset(self.RENDER_VIDEO_PRESET)
+            self.selectedProject.SetRenderSettings({
+                'SelectAllFrames': True,
+                'TargetDir': targetDir,
+                'CustomName': renderVideoFileName,
+                'ExportAudio': False,
+                'ExportVideo': True
+            })
+            self.selectedProject.AddRenderJob()
+
+            """Create render job for audio part"""
+            finalAudioTimeline = self.mediaPool.CreateTimelineFromClips(f'Automated Audio | {renderAudioFileName}', self.workingAudioFile)
+            self.selectedProject.SetCurrentTimeline(finalAudioTimeline)
+
+            self.selectedProject.LoadRenderPreset(self.RENDER_AUDIO_PRESET)
+            self.selectedProject.SetRenderSettings({
+                'SelectAllFrames': True,
+                'TargetDir': targetDir,
+                'CustomName': renderAudioFileName,
+                'ExportAudio': True,
+                'ExportVideo': False
+            })
+            self.selectedProject.AddRenderJob()
+
+            self.openPage('deliver')
+            self.selectedProject.StartRendering()
 
     def checkIsRendering(self):
         return self.selectedProject.IsRenderingInProgress()
 
-    def __removeExistingAutomations(self):
+    def moveFinishedFileToRoot(self, clip):
+        self.mediaPool.MoveClips([clip], self.rootFolder)
+
+    def removeExistingAutomations(self):
         clipsInFolder = self.selectedFolder.GetClips()
 
         for index in clipsInFolder:

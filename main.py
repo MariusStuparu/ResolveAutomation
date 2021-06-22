@@ -1,10 +1,12 @@
 #!/usr/bin/python
 from os import environ as env
+from os import remove as rm
 from tkinter import *
 from tkinter import filedialog
 from functools import partial
 from math import floor
 from time import sleep
+import ffmpeg
 
 from davinci import DaVinciResolve
 
@@ -131,7 +133,7 @@ class ResolveAutomation:
         outputFolderPath.pack(side=LEFT)
 
         def __browseOutputFolder():
-            self.outputPath = filedialog.askdirectory()
+            self.outputPath = filedialog.askdirectory() + '/'
             outputFolderPath.delete(0, END)
             outputFolderPath.insert(0, self.outputPath)
 
@@ -151,6 +153,7 @@ class ResolveAutomation:
     def __startProcessing(self):
         self.buttonProcess['state'] = 'disabled'
         self.buttonStop['state'] = 'normal'
+        self.resolve.removeExistingAutomations()
         self.window.poll = True
         self.__processFolder()
 
@@ -168,8 +171,10 @@ class ResolveAutomation:
                 """Add audio file to an empty timeline"""
                 currentAudioFile = self.clipsInFolder['audioClips'][0]
                 currentTrackName = currentAudioFile.GetName()[:-4]
-                currentTrackName += ' VIDEO'
+                currentAudioTrackName = currentTrackName + ' AUDIO'
+                currentVideoTrackName = currentTrackName + ' VIDEO'
 
+                """Add the audio track to timeline and create audio-only render job"""
                 tl = self.resolve.createTimelineFromAudio(currentAudioFile)
 
                 """Calculate how many times to repeat the video clip"""
@@ -190,15 +195,30 @@ class ResolveAutomation:
                 self.resolve.createCompoundVideo()
 
                 """Create the render job"""
-                self.resolve.createRenderJob(targetDir=self.outputPath, renderFileName=currentTrackName)
+                self.resolve.createRenderJob(
+                    targetDir=self.outputPath,
+                    renderVideoFileName=currentVideoTrackName,
+                    renderAudioFileName=currentAudioTrackName
+                )
 
                 """Wait for render job to complete"""
                 while self.resolve.checkIsRendering():
-                    sleep(5)
+                    sleep(10)
                 else:
-                    print('done render')
+                    video = ffmpeg.input(f'{self.outputPath}/{currentVideoTrackName}.mov')
+                    audio = ffmpeg.input(f'{self.outputPath}/{currentAudioTrackName}.mov')
+                    output = f'{self.outputPath}/{currentTrackName}.mov'
+                    out = ffmpeg.output(video, audio, output, vcodec='copy', acodec='copy', strict='experimental')
+                    out.run()
 
-            # self.window.after(1000, self.__processFolder)
+                    """Remove temporary files"""
+                    rm(f'{self.outputPath}/{currentVideoTrackName}.mov')
+                    rm(f'{self.outputPath}/{currentAudioTrackName}.mov')
+                    self.resolve.moveFinishedFileToRoot(currentAudioFile)
+                    self.clipsInFolder['audioClips'].pop(0)
+
+                    """Process next file"""
+                    self.window.after(1000, self.__processFolder)
 
     def __cleanupWindowOnProjectChange(self):
         """
