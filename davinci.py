@@ -6,6 +6,7 @@ import importlib
 class DaVinciResolve:
     def __init__(self, ):
         self.errorMessages = []
+        self.RENDER_PRESET = 'YouTube - 1080p'
 
         self.resolve = None
         self.pm = None
@@ -14,6 +15,11 @@ class DaVinciResolve:
         self.mediaPool = None
         self.rootFolder = None
         self.selectedFolder = None
+        self.clipsInFolder = None
+        self.workingAudioFile = None
+        self.workingCompoundVideo = None
+        self.workingTimeline = None
+        self.finalTimeline = None
 
         try:
             import DaVinciResolveScript as dvr
@@ -60,6 +66,11 @@ class DaVinciResolve:
         else:
             return None
 
+    def openPage(self, page: str):
+        availablePages = ['media', 'cut', 'edit', 'fusion', 'color', 'fairlight', 'deliver']
+        if page in availablePages:
+            self.resolve.OpenPage(page)
+
     def getRootFolders(self):
         if self.selectedProject:
             self.mediaPool = self.selectedProject.GetMediaPool()
@@ -80,6 +91,7 @@ class DaVinciResolve:
         audioClips = []
         videoClips = []
         timelines = []
+        compounds = []
         clipsInFolder = self.selectedFolder.GetClips()
 
         for index in clipsInFolder:
@@ -90,12 +102,80 @@ class DaVinciResolve:
                 videoClips.append(clip)
             if clip.GetClipProperty('Type') == 'Timeline':
                 timelines.append(clip)
+            if clip.GetClipProperty('Type') == 'Compound':
+                compounds.append(clip)
 
-        return {
+        self.clipsInFolder = {
             'audioClips': audioClips,
             'videoClips': videoClips,
-            'timelines': timelines
+            'timelines': timelines,
+            'compounds': []
         }
+
+        return self.clipsInFolder
+
+    def createTimelineFromAudio(self, audioClip):
+        self.__removeExistingAutomations()
+
+        self.workingAudioFile = audioClip
+        self.workingTimeline = self.mediaPool.CreateTimelineFromClips('Automated Timeline', self.workingAudioFile)
+        self.clipsInFolder['timelines'].append(self.workingTimeline)
+        frameRate = self.selectedProject.GetSetting('timelineFrameRate')
+
+        return {
+            'timeline': self.workingTimeline,
+            'duration': self.__getAudioDuration(self.workingTimeline),
+            'framerate': frameRate
+        }
+
+    def addVideoClipToTimeline(self, videoClip, frames=None):
+        if not frames:
+            self.mediaPool.AppendToTimeline(videoClip)
+        else:
+            self.mediaPool.AppendToTimeline([{
+                'mediaPoolItem': videoClip,
+                'startFrame': 0,
+                'endFrame': frames
+            }])
+
+    def createCompoundVideo(self):
+        videoFiles = self.workingTimeline.GetItemListInTrack('video', 1)
+        compound = self.workingTimeline.CreateCompoundClip(videoFiles, {
+            'name': 'Compound Video',
+            'startTimecode': '01:00:00:00'
+        })
+        self.workingCompoundVideo = compound.GetMediaPoolItem()
+
+        finalTimeline = self.mediaPool.CreateTimelineFromClips('Automated Timeline Video', self.workingCompoundVideo)
+        self.selectedProject.SetCurrentTimeline(finalTimeline)
+
+    def createRenderJob(self, targetDir, renderFileName):
+        self.selectedProject.SetRenderSettings({
+            'SelectAllFrames': True,
+            'TargetDir': targetDir,
+            'CustomName': renderFileName,
+            'ExportAudio': False
+        })
+        self.selectedProject.AddRenderJob()
+        self.openPage('deliver')
+        self.selectedProject.StartRendering()
+
+    def checkIsRendering(self):
+        return self.selectedProject.IsRenderingInProgress()
+
+    def __removeExistingAutomations(self):
+        clipsInFolder = self.selectedFolder.GetClips()
+
+        for index in clipsInFolder:
+            clip = clipsInFolder[index]
+            if clip.GetClipProperty('Type') == 'Timeline' or clip.GetClipProperty('Type') == 'Compound':
+                self.mediaPool.DeleteClips(clip)
+
+    def __getAudioDuration(self, timeline):
+        audioTrack = timeline.GetItemListInTrack('audio', 1)
+        audioTrackDuration = audioTrack[0].GetDuration()
+
+        return audioTrackDuration
 
 
 if __name__ == '__main__':

@@ -9,8 +9,12 @@ else
   brew update
 fi
 
-echo "Installing required packages..."
-
+echo "Installing tkinter..."
 brew install python-tk@3.9
+echo "tkinter installed"
+
+echo "Installing ffmpeg..."
+brew install ffmpeg
+echo "ffmpeg installed"
 
 echo "Initial setup done. You can run the app now."

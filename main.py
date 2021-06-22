@@ -1,9 +1,10 @@
 #!/usr/bin/python
 from os import environ as env
 from tkinter import *
-from tkinter import ttk
 from tkinter import filedialog
 from functools import partial
+from math import floor
+from time import sleep
 
 from davinci import DaVinciResolve
 
@@ -134,11 +135,11 @@ class ResolveAutomation:
             outputFolderPath.delete(0, END)
             outputFolderPath.insert(0, self.outputPath)
 
+            if len(self.clipsInFolder['videoClips']) == 1 and len(self.clipsInFolder['audioClips']) >= 1 and self.outputPath:
+                self.__showProcessButton()
+
         outputFolderBrowse = Button(self.frameClipsInfo, text='Browse', command=__browseOutputFolder)
         outputFolderBrowse.pack(side=LEFT)
-
-        if len(self.clipsInFolder["videoClips"]) == 1 and len(self.clipsInFolder["audioClips"]) >= 1:
-            self.__showProcessButton()
 
     def __showProcessButton(self) -> None:
         self.buttonProcess = Button(self.frameProcessFolder, text='START', command=self.__startProcessing)
@@ -146,7 +147,6 @@ class ResolveAutomation:
         self.buttonStop = Button(self.frameProcessFolder, text='Cancel', command=self.__cancelProcessing)
         self.buttonStop.pack(padx=5, pady=15, side=RIGHT)
         self.buttonStop['state'] = 'disabled'
-        pass
 
     def __startProcessing(self):
         self.buttonProcess['state'] = 'disabled'
@@ -160,10 +160,44 @@ class ResolveAutomation:
         self.buttonStop['state'] = 'disabled'
 
     def __processFolder(self):
+        """
+        Process one audio file from the media pool
+        """
         if self.window.poll:
-            if len(self.clipsInFolder["audioClips"]):
-                pass
-            # print(f'processing...')
+            if len(self.clipsInFolder['audioClips']) and self.outputPath:
+                """Add audio file to an empty timeline"""
+                currentAudioFile = self.clipsInFolder['audioClips'][0]
+                currentTrackName = currentAudioFile.GetName()[:-4]
+                currentTrackName += ' VIDEO'
+
+                tl = self.resolve.createTimelineFromAudio(currentAudioFile)
+
+                """Calculate how many times to repeat the video clip"""
+                timelineFrames = int(tl['duration'])
+                videoFile = self.clipsInFolder['videoClips'][0]
+                videoFrames = int(videoFile.GetClipProperty('Frames'))
+                videoClipInstances = floor(timelineFrames / videoFrames)
+                videoClipFragments = timelineFrames - (videoClipInstances * videoFrames)
+
+                """Append full video clips to the timeline"""
+                for time in range(videoClipInstances):
+                    self.resolve.addVideoClipToTimeline(videoFile)
+
+                if videoClipFragments:
+                    self.resolve.addVideoClipToTimeline(videoFile, videoClipFragments)
+
+                """Create a compound video and add it to an empty timeline"""
+                self.resolve.createCompoundVideo()
+
+                """Create the render job"""
+                self.resolve.createRenderJob(targetDir=self.outputPath, renderFileName=currentTrackName)
+
+                """Wait for render job to complete"""
+                while self.resolve.checkIsRendering():
+                    sleep(5)
+                else:
+                    print('done render')
+
             # self.window.after(1000, self.__processFolder)
 
     def __cleanupWindowOnProjectChange(self):
