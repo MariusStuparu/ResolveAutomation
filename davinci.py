@@ -99,7 +99,7 @@ class DaVinciResolve:
             clip = clipsInFolder[index]
             if clip.GetClipProperty('Type') == 'Audio':
                 audioClips.append(clip)
-            if clip.GetClipProperty('Type') == 'Video':
+            if clip.GetClipProperty('Type') == 'Video' or clip.GetClipProperty('Type') == 'Video+Audio':
                 videoClips.append(clip)
             if clip.GetClipProperty('Type') == 'Timeline':
                 timelines.append(clip)
