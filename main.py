@@ -3,6 +3,7 @@ from os import environ as env
 from os import remove as rm
 from tkinter import *
 from tkinter import filedialog
+from tkinter import ttk
 from functools import partial
 from math import floor
 from time import sleep
@@ -35,8 +36,8 @@ class ResolveAutomation:
         Generic window decoration and setup
         """
         self.window.title('DaVinci Resolve Automated Render')
-        self.window.geometry('800x500')
-        self.framePrjSelect = Frame(self.window, height=150, width=800)
+        self.window.geometry('750x450')
+        self.framePrjSelect = Frame(self.window, height=150, width=750)
         self.framePrjSelect.pack(pady=15)
         self.frameFolderSelect = Frame(self.window, height=150, width=750)
         self.frameFolderSelect.pack(pady=15)
@@ -44,6 +45,11 @@ class ResolveAutomation:
         self.frameClipsInfo.pack(padx=5, pady=10)
         self.frameProcessFolder = Frame(self.window, height=200, width=750)
         self.frameProcessFolder.pack(pady=10)
+        self.frameProgressBar = Frame(self.window, height=50, width=750)
+        self.frameProgressBar.pack(side=BOTTOM)
+
+        self.progressBar = ttk.Progressbar(self.frameProgressBar, orient='horizontal', length=750, mode='determinate')
+        self.progressBar.pack()
 
     def __generateProjectSelectionButtons(self) -> None:
         """
@@ -154,6 +160,8 @@ class ResolveAutomation:
         self.buttonProcess['state'] = 'disabled'
         self.buttonStop['state'] = 'normal'
         self.resolve.removeExistingAutomations()
+        self.progressBar['value'] = 0
+        self.progressBar['maximum'] = len(self.clipsInFolder['audioClips'])
         self.window.poll = True
         self.__processFolder()
 
@@ -168,6 +176,8 @@ class ResolveAutomation:
         """
         if self.window.poll:
             if len(self.clipsInFolder['audioClips']) and self.outputPath:
+                self.progressBar['value'] += 1
+
                 """Add audio file to an empty timeline"""
                 currentAudioFile = self.clipsInFolder['audioClips'][0]
                 currentTrackName = currentAudioFile.GetName()[:-4]
