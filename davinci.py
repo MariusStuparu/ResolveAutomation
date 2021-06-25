@@ -5,6 +5,9 @@ import importlib
 
 class DaVinciResolve:
     def __init__(self, ):
+        dvr = None
+        self.dvr = None
+
         self.errorMessages = []
         self.RENDER_VIDEO_PRESET = 'H.265 Master'
         self.RENDER_AUDIO_PRESET = 'Audio Only'
@@ -31,20 +34,27 @@ class DaVinciResolve:
             elif platform.startswith("win") or platform.startswith("cygwin"):
                 import os
                 expectedPath = os.getenv(
-                    'PROGRAMDATA') + "\\Blackmagic Design\\DaVinci Resolve\\Support\\Developer\\Scripting\\Modules\\"
+                    'PROGRAMDATA'
+                ) + "\\Blackmagic Design\\DaVinci Resolve\\Support\\Developer\\Scripting\\Modules\\"
             elif platform.startswith("linux"):
                 expectedPath = "/opt/resolve/libs/Fusion/Modules/"
             try:
-                self.dvr = importlib.import_module('DaVinciResolveScript', expectedPath + 'DaVinciResolveScript.py')
+                self.dvr = importlib.import_module(
+                    'DaVinciResolveScript',
+                    expectedPath + 'DaVinciResolveScript.py')
             except ImportError:
                 self.errorMessages.append({
-                    'type': 'missing required library',
-                    'message': f'DaVinci Resolve library not found in {expectedPath}'
+                    'type':
+                    'missing required library',
+                    'message':
+                    f'DaVinci Resolve library not found in {expectedPath}'
                 })
         except AttributeError:
             self.errorMessages.append({
-                'type': 'davinci_not_started',
-                'message': 'DaVinci Resolve is not running. Make sure you start Resolve before running this app.'
+                'type':
+                'davinci_not_started',
+                'message':
+                'DaVinci Resolve is not running. Make sure you start Resolve before running this app.'
             })
         finally:
             if dvr:
@@ -60,15 +70,17 @@ class DaVinciResolve:
         else:
             return None
 
-    def loadProject(self, projectName: str):
+    def loadProject(self, projectName):
         if self.pm:
             self.selectedProject = self.pm.LoadProject(projectName)
             return self.selectedProject
         else:
             return None
 
-    def openPage(self, page: str):
-        availablePages = ['media', 'cut', 'edit', 'fusion', 'color', 'fairlight', 'deliver']
+    def openPage(self, page):
+        availablePages = [
+            'media', 'cut', 'edit', 'fusion', 'color', 'fairlight', 'deliver'
+        ]
         if page in availablePages:
             self.resolve.OpenPage(page)
 
@@ -99,7 +111,8 @@ class DaVinciResolve:
             clip = clipsInFolder[index]
             if clip.GetClipProperty('Type') == 'Audio':
                 audioClips.append(clip)
-            if clip.GetClipProperty('Type') == 'Video' or clip.GetClipProperty('Type') == 'Video+Audio':
+            if clip.GetClipProperty('Type') == 'Video' or clip.GetClipProperty(
+                    'Type') == 'Video+Audio':
                 videoClips.append(clip)
             if clip.GetClipProperty('Type') == 'Timeline':
                 timelines.append(clip)
@@ -119,7 +132,9 @@ class DaVinciResolve:
         # self.__removeExistingAutomations()
 
         self.workingAudioFile = audioClip
-        self.workingTimeline = self.mediaPool.CreateTimelineFromClips(f'Automated Timeline | {self.workingAudioFile.GetName()}', self.workingAudioFile)
+        self.workingTimeline = self.mediaPool.CreateTimelineFromClips(
+            f'Automated Timeline | {self.workingAudioFile.GetName()}',
+            self.workingAudioFile)
         self.clipsInFolder['timelines'].append(self.workingTimeline)
         frameRate = self.selectedProject.GetSetting('timelineFrameRate')
 
@@ -141,18 +156,22 @@ class DaVinciResolve:
 
     def createCompoundVideo(self):
         videoFiles = self.workingTimeline.GetItemListInTrack('video', 1)
-        compound = self.workingTimeline.CreateCompoundClip(videoFiles, {
-            'name': f'Compound Video | {self.workingAudioFile.GetName()}',
-            'startTimecode': '00:00:00:00'
-        })
+        compound = self.workingTimeline.CreateCompoundClip(
+            videoFiles, {
+                'name': f'Compound Video | {self.workingAudioFile.GetName()}',
+                'startTimecode': '00:00:00:00'
+            })
         self.workingCompoundVideo = compound.GetMediaPoolItem()
 
-    def createRenderJob(self, targetDir, renderVideoFileName, renderAudioFileName):
+    def createRenderJob(self, targetDir, renderVideoFileName,
+                        renderAudioFileName):
         """Render video and audio parts"""
 
         if self.selectedProject.DeleteAllRenderJobs():
             """Create render job for video part"""
-            finalVideoTimeline = self.mediaPool.CreateTimelineFromClips(f'Automated Video | {renderVideoFileName}', self.workingCompoundVideo)
+            finalVideoTimeline = self.mediaPool.CreateTimelineFromClips(
+                f'Automated Video | {renderVideoFileName}',
+                self.workingCompoundVideo)
             self.selectedProject.SetCurrentTimeline(finalVideoTimeline)
 
             self.selectedProject.LoadRenderPreset(self.RENDER_VIDEO_PRESET)
@@ -164,9 +183,10 @@ class DaVinciResolve:
                 'ExportVideo': True
             })
             self.selectedProject.AddRenderJob()
-
             """Create render job for audio part"""
-            finalAudioTimeline = self.mediaPool.CreateTimelineFromClips(f'Automated Audio | {renderAudioFileName}', self.workingAudioFile)
+            finalAudioTimeline = self.mediaPool.CreateTimelineFromClips(
+                f'Automated Audio | {renderAudioFileName}',
+                self.workingAudioFile)
             self.selectedProject.SetCurrentTimeline(finalAudioTimeline)
 
             self.selectedProject.LoadRenderPreset(self.RENDER_AUDIO_PRESET)
@@ -193,7 +213,9 @@ class DaVinciResolve:
 
         for index in clipsInFolder:
             clip = clipsInFolder[index]
-            if clip.GetClipProperty('Type') == 'Timeline' or clip.GetClipProperty('Type') == 'Compound':
+            if clip.GetClipProperty(
+                    'Type') == 'Timeline' or clip.GetClipProperty(
+                        'Type') == 'Compound':
                 self.mediaPool.DeleteClips(clip)
 
     def __getAudioDuration(self, timeline):

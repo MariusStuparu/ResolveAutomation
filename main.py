@@ -23,7 +23,7 @@ class ResolveAutomation:
 
         self.__startGUI()
 
-    def __startGUI(self) -> None:
+    def __startGUI(self):
         """
         Main GUI controller
         """
@@ -31,7 +31,7 @@ class ResolveAutomation:
         self.__generateProjectSelectionButtons()
         self.window.mainloop()
 
-    def __basigGUIsetup(self) -> None:
+    def __basigGUIsetup(self):
         """
         Generic window decoration and setup
         """
@@ -48,10 +48,13 @@ class ResolveAutomation:
         self.frameProgressBar = Frame(self.window, height=50, width=750)
         self.frameProgressBar.pack(side=BOTTOM)
 
-        self.progressBar = ttk.Progressbar(self.frameProgressBar, orient='horizontal', length=750, mode='determinate')
+        self.progressBar = ttk.Progressbar(self.frameProgressBar,
+                                           orient='horizontal',
+                                           length=750,
+                                           mode='determinate')
         self.progressBar.pack()
 
-    def __generateProjectSelectionButtons(self) -> None:
+    def __generateProjectSelectionButtons(self):
         """
         Load the project list from Resolve and generate selection buttons
         """
@@ -67,20 +70,25 @@ class ResolveAutomation:
             prjLabel.pack(side=TOP, anchor=N)
 
             for index, prjName in enumerate(projects):
-                button = Button(framePrjButtons, text=prjName,
-                                command=partial(lambda i=index, prj=prjName: self.__onProjectSelect(i, prj)))
+                button = Button(
+                    framePrjButtons,
+                    text=prjName,
+                    command=partial(lambda i=index, prj=prjName: self.
+                                    __onProjectSelect(i, prj)))
                 button.pack(side=LEFT, padx=10)
                 self.btnsProjects.append(button)
         else:
             # TODO: Implement input
-            prjLabel = Label(self.framePrjSelect, text='Too many projects to list. Write the name here:')
+            prjLabel = Label(
+                self.framePrjSelect,
+                text='Too many projects to list. Write the name here:')
             # a1 = Entry(window).place(x=80, y=50)
 
-    def __onProjectSelect(self, index: int, prjName: str) -> None:
+    def __onProjectSelect(self, index, prjName):
         """
         Action handler for project selection buttons
         :param index: position of the button inside the btnsProjects list
-        :param prjName: string name of the project, as received from Resolve
+        :param prjNameing name of the project, as received from Resolve
         """
         for btn in self.btnsProjects:
             btn['state'] = 'normal'
@@ -88,7 +96,7 @@ class ResolveAutomation:
         self.__cleanupWindowOnProjectChange()
         self.__generateBinSelectionButtons(self.resolve.loadProject(prjName))
 
-    def __generateBinSelectionButtons(self, projectSelected) -> None:
+    def __generateBinSelectionButtons(self, projectSelected):
         """
         Read folders from project root and generate selection buttons
         """
@@ -97,21 +105,26 @@ class ResolveAutomation:
             self.firstLevelFolders = self.resolve.getRootFolders()
 
             if len(self.firstLevelFolders):
-                selectFolderLabel = Label(self.frameFolderSelect, text='Select the folder to be processed:')
+                selectFolderLabel = Label(
+                    self.frameFolderSelect,
+                    text='Select the folder to be processed:')
                 selectFolderLabel.pack(side=TOP, anchor=N)
 
                 for index, folder in enumerate(self.firstLevelFolders):
                     folderName = folder.GetName()
-                    button = Button(self.frameFolderSelect, text=folderName,
-                                    command=partial(lambda i=index, prj=folder: self.__onFolderSelect(i, prj)))
+                    button = Button(
+                        self.frameFolderSelect,
+                        text=folderName,
+                        command=partial(lambda i=index, prj=folder: self.
+                                        __onFolderSelect(i, prj)))
                     button.pack(side=LEFT, padx=10)
                     self.btnsFolders.append(button)
 
-    def __onFolderSelect(self, index: int, folder) -> None:
+    def __onFolderSelect(self, index, folder):
         """
         Action handler for folder selection buttons
         :param index: position of the button inside the btnsFolders list
-        :param folder: string name of the folder, as received from Resolve
+        :param foldering name of the folder, as received from Resolve
         """
         for btn in self.btnsFolders:
             btn['state'] = 'normal'
@@ -120,22 +133,25 @@ class ResolveAutomation:
         self.__cleanupWindowOnFolderChange()
         self.__getFolderContents()
 
-    def __getFolderContents(self) -> None:
+    def __getFolderContents(self):
         """
         Read folder contents and separate media into audio, video and timelines
         """
         self.clipsInFolder = self.resolve.getFolderContent()
 
-        stats = Label(self.frameClipsInfo,
-                      text=f'Folder contains: '
-                           f'{len(self.clipsInFolder["audioClips"])} audio file(s), '
-                           f'{len(self.clipsInFolder["videoClips"])} video file(s) and '
-                           f'{len(self.clipsInFolder["timelines"])} timeline(s)')
+        stats = Label(
+            self.frameClipsInfo,
+            text=f'Folder contains: '
+            f'{len(self.clipsInFolder["audioClips"])} audio file(s), '
+            f'{len(self.clipsInFolder["videoClips"])} video file(s) and '
+            f'{len(self.clipsInFolder["timelines"])} timeline(s)')
         stats.pack(side=TOP, anchor=N)
 
-        ouputFolderLabel = Label(self.frameClipsInfo, text='Select output folder:')
+        ouputFolderLabel = Label(self.frameClipsInfo,
+                                 text='Select output folder:')
         ouputFolderLabel.pack(side=LEFT)
-        outputFolderPath = Entry(self.frameClipsInfo, textvariable=self.outputPath)
+        outputFolderPath = Entry(self.frameClipsInfo,
+                                 textvariable=self.outputPath)
         outputFolderPath.pack(side=LEFT)
 
         def __browseOutputFolder():
@@ -143,16 +159,23 @@ class ResolveAutomation:
             outputFolderPath.delete(0, END)
             outputFolderPath.insert(0, self.outputPath)
 
-            if len(self.clipsInFolder['videoClips']) == 1 and len(self.clipsInFolder['audioClips']) >= 1 and self.outputPath:
+            if len(self.clipsInFolder['videoClips']) == 1 and len(
+                    self.clipsInFolder['audioClips']) >= 1 and self.outputPath:
                 self.__showProcessButton()
 
-        outputFolderBrowse = Button(self.frameClipsInfo, text='Browse', command=__browseOutputFolder)
+        outputFolderBrowse = Button(self.frameClipsInfo,
+                                    text='Browse',
+                                    command=__browseOutputFolder)
         outputFolderBrowse.pack(side=LEFT)
 
-    def __showProcessButton(self) -> None:
-        self.buttonProcess = Button(self.frameProcessFolder, text='START', command=self.__startProcessing)
+    def __showProcessButton(self):
+        self.buttonProcess = Button(self.frameProcessFolder,
+                                    text='START',
+                                    command=self.__startProcessing)
         self.buttonProcess.pack(padx=5, pady=15, side=RIGHT)
-        self.buttonStop = Button(self.frameProcessFolder, text='Cancel', command=self.__cancelProcessing)
+        self.buttonStop = Button(self.frameProcessFolder,
+                                 text='Cancel',
+                                 command=self.__cancelProcessing)
         self.buttonStop.pack(padx=5, pady=15, side=RIGHT)
         self.buttonStop['state'] = 'disabled'
 
@@ -177,56 +200,55 @@ class ResolveAutomation:
         if self.window.poll:
             if len(self.clipsInFolder['audioClips']) and self.outputPath:
                 self.progressBar['value'] += 1
-
                 """Add audio file to an empty timeline"""
                 currentAudioFile = self.clipsInFolder['audioClips'][0]
                 currentTrackName = currentAudioFile.GetName()[:-4]
                 currentAudioTrackName = currentTrackName + ' AUDIO'
                 currentVideoTrackName = currentTrackName + ' VIDEO'
-
                 """Add the audio track to timeline and create audio-only render job"""
                 tl = self.resolve.createTimelineFromAudio(currentAudioFile)
-
                 """Calculate how many times to repeat the video clip"""
                 timelineFrames = int(tl['duration'])
                 videoFile = self.clipsInFolder['videoClips'][0]
                 videoFrames = int(videoFile.GetClipProperty('Frames'))
                 videoClipInstances = floor(timelineFrames / videoFrames)
-                videoClipFragments = timelineFrames - (videoClipInstances * videoFrames)
-
+                videoClipFragments = timelineFrames - (videoClipInstances *
+                                                       videoFrames)
                 """Append full video clips to the timeline"""
                 for time in range(videoClipInstances):
                     self.resolve.addVideoClipToTimeline(videoFile)
 
                 if videoClipFragments:
-                    self.resolve.addVideoClipToTimeline(videoFile, videoClipFragments)
-
+                    self.resolve.addVideoClipToTimeline(
+                        videoFile, videoClipFragments)
                 """Create a compound video and add it to an empty timeline"""
                 self.resolve.createCompoundVideo()
-
                 """Create the render job"""
                 self.resolve.createRenderJob(
                     targetDir=self.outputPath,
                     renderVideoFileName=currentVideoTrackName,
-                    renderAudioFileName=currentAudioTrackName
-                )
-
+                    renderAudioFileName=currentAudioTrackName)
                 """Wait for render job to complete"""
                 while self.resolve.checkIsRendering():
                     sleep(10)
                 else:
-                    video = ffmpeg.input(f'{self.outputPath}/{currentVideoTrackName}.mov')
-                    audio = ffmpeg.input(f'{self.outputPath}/{currentAudioTrackName}.mov')
-                    output = f'{self.outputPath}/{currentTrackName}.mov'
-                    out = ffmpeg.output(video, audio, output, vcodec='copy', acodec='copy', strict='experimental')
+                    video = ffmpeg.input(
+                        f'{self.outputPath}/{currentVideoTrackName}.mov')
+                    audio = ffmpeg.input(
+                        f'{self.outputPath}/{currentAudioTrackName}.mov')
+                    output = f'{self.outputPath}/{currentTrackName}.mp4'
+                    out = ffmpeg.output(video,
+                                        audio,
+                                        output,
+                                        vcodec='copy',
+                                        acodec='copy',
+                                        strict='experimental')
                     out.run()
-
                     """Remove temporary files"""
                     rm(f'{self.outputPath}/{currentVideoTrackName}.mov')
                     rm(f'{self.outputPath}/{currentAudioTrackName}.mov')
                     self.resolve.moveFinishedFileToRoot(currentAudioFile)
                     self.clipsInFolder['audioClips'].pop(0)
-
                     """Process next file"""
                     self.window.after(1000, self.__processFolder)
 
@@ -254,10 +276,14 @@ class ResolveAutomation:
 
 
 if __name__ == '__main__':
-    env.update({'RESOLVE_SCRIPT_API':
-                '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting'})
-    env.update({'RESOLVE_SCRIPT_LIB':
-                '/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so'})
+    env.update({
+        'RESOLVE_SCRIPT_API':
+        '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting'
+    })
+    env.update({
+        'RESOLVE_SCRIPT_LIB':
+        '/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so'
+    })
     env.update({'PYTHONPATH': '$PYTHONPATH:$RESOLVE_SCRIPT_API/Modules/'})
 
     buildVideos = ResolveAutomation()
