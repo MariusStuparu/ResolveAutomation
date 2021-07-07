@@ -237,13 +237,7 @@ class ResolveAutomation:
                     audio = ffmpeg.input(
                         f'{self.outputPath}/{currentAudioTrackName}.mov')
                     output = f'{self.outputPath}/{currentTrackName}.mp4'
-                    out = ffmpeg.output(video,
-                                        audio,
-                                        output,
-                                        vcodec='copy',
-                                        acodec='copy',
-                                        strict='experimental')
-                    out.run()
+                    ffmpeg.concat(video, audio, v=1, a=1).output(output).run()
                     """Remove temporary files"""
                     rm(f'{self.outputPath}/{currentVideoTrackName}.mov')
                     rm(f'{self.outputPath}/{currentAudioTrackName}.mov')
